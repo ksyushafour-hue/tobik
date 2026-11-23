@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мой Тобик</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg: #14120f;
+    --card: #1c1916;
+    --card2: #242019;
+    --ink: #ece6dc;
+    --muted: #8b8378;
+    --line: #322c24;
+    --accent: #d9855c;
+    --accent-soft: #3a2a20;
+    --good: #7fb08a;
+  }
+  html, body { height:100%; }
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    display:flex; justify-content:center;
+    padding: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    width:100%; max-width: 460px;
+    background: var(--card);
+    border-radius: 28px;
+    border: 1px solid var(--line);
+    display:flex; flex-direction:column;
+    min-height: 740px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bg-layer { position:absolute; inset:0; z-index:0; pointer-events:none; }
+  .bg-layer img { width:100%; height:100%; object-fit: cover; opacity:.35; filter: brightness(.7); }
+  .bg-layer::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(to bottom, rgba(20,18,15,.55), rgba(20,18,15,.95));
+  }
+  .app > *:not(.bg-layer):not(.screen) { position: relative; z-index:1; }
+
+  .top { display:flex; justify-content:space-between; align-items:center; padding: 20px 20px 6px; }
+  .brand { font-weight:700; font-size:15px; letter-spacing:.3px; }
+  .brand small { color: var(--muted); font-weight:500; margin-left:6px; }
+  .coins {
+    display:flex; align-items:center; gap:6px;
+    font-weight:700; font-size:14px;
+    background: rgba(0,0,0,.35);
+    border:1px solid var(--line);
+    padding:6px 12px; border-radius: 999px;
+    backdrop-filter: blur(8px);
+  }
+  .coin-ico { width:14px; height:14px; }
+
+  .stage {
+    flex:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    position:relative; min-height: 320px; padding: 10px 20px;
+  }
+  .bubble {
+    position:absolute; top: 8px;
+    background: var(--card2); border:1px solid var(--line);
+    color: var(--ink);
+    padding: 10px 16px; border-radius: 18px;
+    font-size:13.5px; font-weight:600;
+    opacity:0; transition: opacity .2s;
+    max-width: 240px; text-align:center; z-index:2;
+  }
+  .bubble.show { opacity:1; }
+  .bubble::after {
+    content:''; position:absolute; bottom:-7px; left:50%;
+    width:12px; height:12px;
+    background: var(--card2);
+    border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .toby-wrap {
+    width: 220px; height: 220px;
+    cursor:pointer; user-select:none;
+    transition: transform .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toby-wrap:active { transform: scale(.94); }
+  .toby-wrap.bounce { animation: bounce .45s ease; }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0) rotate(0); }
+    35% { transform: translateY(-14px) rotate(-3deg); }
+    65% { transform: translateY(-4px) rotate(2deg); }
+  }
+  .toby-wrap img { width:100%; height:100%; object-fit: contain; display:block; }
+  .dog-name { margin-top: 6px; font-size: 12.5px; color: var(--muted); font-weight:500; text-align:center; }
+
+  .stats {
+    display:flex; flex-direction:column; gap:8px;
+    margin: 14px 20px 16px; padding: 14px 16px;
+    background: rgba(0,0,0,.25);
+    border-radius: 16px; border:1px solid var(--line);
+    backdrop-filter: blur(8px);
+  }
+  .stat-row { display:flex; align-items:center; gap:10px; }
+  .stat-ico { width:16px; height:16px; flex:0 0 16px; }
+  .stat-track { flex:1; height:8px; background: rgba(255,255,255,.06); border-radius: 999px; overflow:hidden; }
+  .stat-fill { height:100%; border-radius:999px; transition: width .4s ease; }
+  .fill-hunger { background: #d98a5a; }
+  .fill-happy  { background: #7fa8c9; }
+  .fill-energy { background: #86b38f; }
+
+  .dock {
+    display:flex; justify-content:space-around;
+    border-top:1px solid var(--line);
+    padding: 12px 16px 16px;
+    background: rgba(0,0,0,.35);
+    backdrop-filter: blur(8px);
+  }
+  .dock button {
+    all: unset;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer; padding: 8px 12px;
+    border-radius: 14px;
+    transition: background .15s;
+    color: var(--muted); font-size: 11px; font-weight:600;
+  }
+  .dock button:hover:not(:disabled) { background: rgba(255,255,255,.05); color: var(--ink); }
+  .dock button:disabled { opacity:.35; cursor:not-allowed; }
+  .dock button svg { width:24px; height:24px; }
+
+  /* ===== FULLSCREEN SCREENS ===== */
+  .screen {
+    position:fixed; inset:0;
+    background: var(--bg);
+    padding: 20px;
+    display:none; flex-direction:column;
+    z-index: 100;
+    overflow-y:auto;
+  }
+  .screen.active { display:flex; }
+  .screen::-webkit-scrollbar { width:0; }
+  .screen-inner {
+    width:100%; max-width: 460px; margin: 0 auto;
+    display:flex; flex-direction:column; flex:1;
+  }
+  .screen-head { display:flex; align-items:center; gap:10px; margin-bottom: 16px; }
+  .back-btn {
+    all:unset; cursor:pointer;
+    width:34px; height:34px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius: 10px; background: var(--card2);
+    border:1px solid var(--line);
+  }
+  .back-btn:hover { background: var(--accent-soft); }
+  .back-btn svg { width:16px; height:16px; }
+  .screen-title { font-size:16px; font-weight:700; }
+
+  .menu-list { display:flex; flex-direction:column; gap:10px; }
+  .menu-card {
+    all:unset;
+    display:flex; align-items:center; gap:14px;
+    padding: 16px; border:1px solid var(--line);
+    border-radius: 16px; background: var(--card);
+    cursor:pointer; text-align:left;
+    transition: border-color .15s, transform .1s, background .15s;
+    box-sizing:border-box; width:100%;
+  }
+  .menu-card:hover { border-color: var(--accent); background: var(--card2); }
+  .menu-card:active { transform: scale(.99); }
+  .menu-card .mc-ico {
+    width:38px; height:38px; flex:0 0 38px;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--card2); border-radius: 10px;
+  }
+  .menu-card .mc-ico svg { width:20px; height:20px; }
+  .menu-card h4 { font-size:14px; font-weight:700; }
+  .menu-card p { font-size:12px; color: var(--muted); margin-top:2px; }
+  .menu-card.locked { opacity:.4; pointer-events:none; }
+
+  .ach-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; }
+  .ach-item {
+    border:1px solid var(--line); border-radius:14px; padding:12px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    text-align:center; opacity:.35; transition: all .25s;
+  }
+  .ach-item.unlocked { opacity:1; border-color: var(--accent); background: var(--accent-soft); }
+  .ach-item svg { width:22px; height:22px; }
+  .ach-item span { font-size:11.5px; font-weight:600; line-height:1.3; }
+
+  .mg-content { flex:1; display:flex; flex-direction:column; }
+  .mg-info { font-size:13px; color: var(--muted); margin-bottom:14px; line-height:1.5; }
+
+  .mole-area {
+    flex:1; min-height:280px;
+    background: var(--card); border-radius: 16px;
+    position:relative; overflow:hidden; border:1px solid var(--line);
+  }
+  .mole {
+    position:absolute; width:46px; height:46px;
+    cursor:pointer; user-select:none;
+    transition: transform .1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mole:active { transform: scale(.85); }
+  .mole img { width:100%; height:100%; object-fit: contain; display:block; }
+  .mole svg { width:100%; height:100%; }
+
+  .ttt-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin: 8px 0 14px; }
+  .ttt-cell {
+    aspect-ratio:1; background: var(--card);
+    border:1px solid var(--line); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:36px; font-weight:700; cursor:pointer;
+    color: var(--ink); transition: background .15s;
+  }
+  .ttt-cell:hover { background: var(--card2); }
+  .ttt-cell.x { color: var(--accent); }
+  .ttt-cell.o { color: var(--good); }
+
+  .quiz-q { font-size:15px; font-weight:700; margin-bottom:14px; line-height:1.4; }
+  .quiz-opt {
+    all:unset; display:block; width:100%; box-sizing:border-box;
+    padding:14px 16px; border:1px solid var(--line); border-radius:12px;
+    margin-bottom:8px; cursor:pointer;
+    font-size:13.5px; font-weight:600;
+    transition: all .15s; background: var(--card);
+  }
+  .quiz-opt:hover { border-color: var(--accent); background: var(--card2); }
+  .quiz-opt.correct { border-color: var(--good); background: rgba(127,176,138,.15); }
+  .quiz-opt.wrong { border-color: var(--accent); background: rgba(217,133,92,.12); opacity:.7; }
+
+  .focus-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px; }
+  .focus-timer { font-size:64px; font-weight:800; letter-spacing:-2px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .focus-label { font-size:13px; color: var(--muted); margin-bottom: 22px; }
+  .focus-presets { display:flex; gap:8px; margin-bottom:22px; }
+  .focus-presets button {
+    all:unset; padding:8px 16px; border-radius:999px;
+    border:1px solid var(--line); font-size:12.5px; font-weight:600; cursor:pointer;
+    color: var(--muted);
+  }
+  .focus-presets button.active { background: var(--accent); color:#14120f; border-color: var(--accent); }
+  .focus-start {
+    all:unset; padding: 14px 42px;
+    background: var(--accent); color:#14120f; border-radius:999px;
+    font-weight:700; font-size:14px; cursor:pointer; transition: opacity .15s;
+  }
+  .focus-start:hover { opacity:.9; }
+  .focus-start.stop { background: var(--ink); color: var(--bg); }
+  .focus-hint { font-size:12px; color: var(--muted); margin-top:18px; line-height:1.5; max-width:280px; }
+
+  /* ===== LORE CARDS ===== */
+  .lore-card {
+    background: var(--card);
+    border:1px solid var(--line);
+    border-radius: 18px; padding: 20px;
+    margin-bottom: 12px;
+    position:relative;
+  }
+  .lore-card h3 {
+    font-size: 15px; font-weight: 700; margin-bottom: 10px;
+    color: var(--accent);
+    display:flex; align-items:center; gap:8px;
+  }
+  .lore-card h3::before {
+    content:''; width:4px; height:16px;
+    background: var(--accent); border-radius:2px;
+  }
+  .lore-card p {
+    font-size: 13.5px; line-height: 1.8;
+    color: #b8b1a6;
+  }
+  .lore-empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted); font-size: 13.5px; line-height: 1.7;
+  }
+  .lore-empty svg { width:60px; height:60px; opacity:.3; margin-bottom:16px; }
+  .lore-count {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px; font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  .toast {
+    position:fixed; bottom:30px; left:50%;
+    transform: translate(-50%, 80px);
+    background: var(--ink); color: var(--bg);
+    padding:12px 22px; border-radius:999px;
+    font-size:12.5px; font-weight:700;
+    opacity:0; transition: all .35s; pointer-events:none;
+    z-index: 200; white-space:nowrap;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    max-width: 90vw; overflow:hidden; text-overflow:ellipsis;
+  }
+  .toast.show { opacity:1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="bg-layer">
+    <img src="bg.png" alt=""
+      onerror="this.style.display='none';this.parentElement.style.background='radial-gradient(circle at 30% 20%, #2a231c 0%, #14120f 70%)'">
+  </div>
+
+  <div class="top">
+    <div class="brand">Тобик <small>друг Артурито</small></div>
+    <div class="coins">
+      <svg class="coin-ico" viewBox="0 0 24 24" fill="none" stroke="#d9855c" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9h4a2 2 0 0 1 0 4H9"/>
+      </svg>
+      <span id="coins">0</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="bubble" id="bubble">Гав!</div>
+    <div class="toby-wrap" id="toby">
+      <img src="toby.png" alt="Тобик"
+        onerror="this.outerHTML='&lt;svg viewBox=\'0 0 200 200\' width=\'100%\' height=\'100%\'&gt;&lt;ellipse cx=\'58\' cy=\'72\' rx=\'20\' ry=\'30\' fill=\'#b8825a\' transform=\'rotate(-18 58 72)\'/&gt;&lt;ellipse cx=\'142\' cy=\'72\' rx=\'20\' ry=\'30\' fill=\'#b8825a\' transform=\'rotate(18 142 72)\'/&gt;&lt;ellipse cx=\'100\' cy=\'108\' rx=\'62\' ry=\'56\' fill=\'#d6a373\'/&gt;&lt;ellipse cx=\'76\' cy=\'92\' rx=\'13\' ry=\'9\' fill=\'#a9744e\'/&gt;&lt;ellipse cx=\'124\' cy=\'92\' rx=\'13\' ry=\'9\' fill=\'#a9744e\'/&gt;&lt;ellipse cx=\'76\' cy=\'110\' rx=\'7\' ry=\'8\' fill=\'#2b2b2b\'/&gt;&lt;ellipse cx=\'124\' cy=\'110\' rx=\'7\' ry=\'8\' fill=\'#2b2b2b\'/&gt;&lt;circle cx=\'78\' cy=\'108\' r=\'2.2\' fill=\'#fff\'/&gt;&lt;circle cx=\'126\' cy=\'108\' r=\'2.2\' fill=\'#fff\'/&gt;&lt;ellipse cx=\'100\' cy=\'138\' rx=\'34\' ry=\'26\' fill=\'#f2ddc4\'/&gt;&lt;ellipse cx=\'100\' cy=\'128\' rx=\'8\' ry=\'6\' fill=\'#2b2b2b\'/&gt;&lt;path d=\'M100 134 Q100 144 90 144\' stroke=\'#2b2b2b\' stroke-width=\'2.5\' fill=\'none\' stroke-linecap=\'round\'/&gt;&lt;path d=\'M100 134 Q100 144 110 144\' stroke=\'#2b2b2b\' stroke-width=\'2.5\' fill=\'none\' stroke-linecap=\'round\'/&gt;&lt;path d=\'M96 146 Q100 154 104 146\' fill=\'#e08b8b\'/&gt;&lt;/svg&gt;'">
+    </div>
+    <div class="dog-name">нажми на Тобика, чтобы погладить</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-row">
+      <svg class="stat-ico" viewBox="0 0 24 24" fill="none" stroke="#d98a5a" stroke-width="2" stroke-linecap="round"><path d="M4 12h4l2-4 4 8 2-4h4"/></svg>
+      <div class="stat-track"><div class="stat-fill fill-hunger" id="barHunger"></div></div>
+    </div>
+    <div class="stat-row">
+      <svg class="stat-ico" viewBox="0 0 24 24" fill="none" stroke="#7fa8c9" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+      <div class="stat-track"><div class="stat-fill fill-happy" id="barHappy"></div></div>
+    </div>
+    <div class="stat-row">
+      <svg class="stat-ico" viewBox="0 0 24 24" fill="none" stroke="#86b38f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 11-12h-7l1-8z"/></svg>
+      <div class="stat-track"><div class="stat-fill fill-energy" id="barEnergy"></div></div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <button id="btnFeed" title="Покормить">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v10a4 4 0 0 0 4 4h0a4 4 0 0 0 4-4V3M5 3v6M10 3v6M17 3c-1.5 0-3 2-3 5s1.5 5 3 5v8"/>
+      </svg>Корм
+    </button>
+    <button id="btnPlay" title="Поиграть">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>Играть
+    </button>
+    <button id="btnSleep" title="Поспать">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>Спать
+    </button>
+    <button id="btnMenu" title="Меню">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Меню
+    </button>
+  </div>
+
+  <!-- ============ МЕНЮ (фуллскрин) ============ -->
+  <div class="screen" id="screen-menu">
+    <div class="screen-inner">
+      <div class="screen-head">
+        <button class="back-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="screen-title">Меню</div>
+      </div>
+      <div class="menu-list">
+        <button class="menu-card" data-open="focus">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d9855c" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><h4>Фокус с Артурито</h4><p>Таймер подготовки к экзамену</p></div>
+        </button>
+        <button class="menu-card" data-open="minigames">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#7fa8c9" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="12" rx="3"/><path d="M7 13h3M8.5 11.5v3M15 12h.01M17.5 14h.01"/></svg></div>
+          <div><h4>Мини-игры</h4><p>Заработай монеты для Тобика</p></div>
+        </button>
+        <button class="menu-card" data-open="ach">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#e0b455" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/></svg></div>
+          <div><h4>Достижения</h4><p id="achCount">0 из 8</p></div>
+        </button>
+        <button class="menu-card" data-open="lore">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#a58a72" stroke-width="2" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h8M8 11h6"/></svg></div>
+          <div><h4>Записки Тобика</h4><p id="loreCount">0 записок</p></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ФОКУС ============ -->
+  <div class="screen" id="screen-focus">
+    <div class="screen-inner">
+      <div class="screen-head">
+        <button class="back-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="screen-title">Фокус с Артурито</div>
+      </div>
+      <div class="focus-wrap">
+        <div class="focus-timer" id="focusTimer">25:00</div>
+        <div class="focus-label">Подготовка к рабочему экзамену</div>
+        <div class="focus-presets">
+          <button data-min="15">15 мин</button>
+          <button data-min="25" class="active">25 мин</button>
+          <button data-min="45">45 мин</button>
+        </div>
+        <button class="focus-start" id="focusStart">Начать</button>
+        <div class="focus-hint">Тобик будет тихо лежать рядом и не даст тебе отвлечься.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ МИНИ-ИГРЫ ============ -->
+  <div class="screen" id="screen-minigames">
+    <div class="screen-inner">
+      <div class="screen-head">
+        <button class="back-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="screen-title">Мини-игры</div>
+      </div>
+      <div class="menu-list">
+        <button class="menu-card" data-open="mole">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#8a5c3f" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="14" rx="7" ry="6"/><path d="M12 9c0-3 4-4 6-2"/></svg></div>
+          <div><h4>Поймай мышь</h4><p>10 секунд · 1 монета за мышь</p></div>
+        </button>
+        <button class="menu-card" data-open="ttt">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#7fa8c9" stroke-width="2" stroke-linecap="round"><path d="M4 4l16 16M20 4L4 20"/></svg></div>
+          <div><h4>Крестики-нолики</h4><p>Победа = 10 монет</p></div>
+        </button>
+        <button class="menu-card" data-open="quiz">
+          <div class="mc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#86b38f" stroke-width="2" stroke-linecap="round"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></div>
+          <div><h4>Викторина лора</h4><p>Проверь, знаешь ли ты Тобика</p></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ МЫШИ ============ -->
+  <div class="screen" id="screen-mole">
+    <div class="screen-inner">
+      <div class="screen-head">
+        <button class="back-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="screen-title">Поймай мышь</div>
+      </div>
+      <div class="mg-content">
+        <div class="mg-info" id="moleInfo">Кликай по мышам. Каждая = 1 монета.</div>
+        <div class="mole-area" id="moleArea"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ КРЕСТИКИ ============ -->
+  <div class="screen" id="screen-ttt">
+    <div class="screen-inner">
+      <div class="screen-head">
+        <button class="back-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="screen-title">Крестики-нолики</div>
+      </div>
+      <div class="mg-content">
+        <div class="mg-info" id="tttInfo">Ты — крестик. Тобик — нолик.</div>
+        <div class="ttt-grid" id="tttGrid"></div>
+        <button class="focus-start" id="tttReset" style="align-self:center;padding:12px 32px;margin-top:8px">Заново</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ВИКТОРИНА ЛОРА ============ -->
+  <div class="screen" id="screen-quiz">
+    <div class="screen-inner">
+      <div class="screen-head">
+        <
